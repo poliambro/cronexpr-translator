@@ -67,8 +67,53 @@ class Translator:
         return "ERROR"
 
     @staticmethod
+    def translate_day_of_month(subexpression: str, field_type: CronField) -> str:
+        if Translator.__is_last_week_day_expression(subexpression):
+            return "on the last weekday of the month"
+        if Translator.__is_week_day_expression(subexpression):
+            day_of_month = [day for day in subexpression.split(AllowedCharacters.WEEK_DAY.value) if day]
+            if day_of_month[0] == "1":
+                return "on the first week day of the month"
+            return f"on the weekday nearest day {day_of_month[0]} of the month"
+        if Translator.__is_last_day_expression(subexpression):
+            return "on the last day of the month"
+        if Translator.__is_star_expression(subexpression) or Translator.__is_question_mark_expression(subexpression):
+            return f"every day"
+        if Translator.__has_slash_in_expression(subexpression):
+            arguments = subexpression.rsplit(AllowedCharacters.SLASH.value)
+            slash_expr = f"every {arguments[1]} days"
+            if Translator.__is_slashed_star_expression(subexpression):
+                return slash_expr
+            return f"{slash_expr}, starting on day {arguments[0]} of the month"
+        if Translator.__is_list_expression(subexpression):
+            list_values = subexpression.rsplit(AllowedCharacters.LIST.value)
+            translation_msg = "on day "
+            for value in list_values:
+                element_desc = value
+                if Translator.__is_range_expression(element_desc):
+                    arguments = element_desc.rsplit(AllowedCharacters.RANGE.value)
+                    element_desc = f"{arguments[0]} through {arguments[1]}"
+                if list_values[-1] == value:
+                    translation_msg += f"and {element_desc} of the month"
+                    break
+                translation_msg += f"{element_desc}, "
+            return translation_msg
+        if Translator.__is_range_expression(subexpression):
+            arguments = subexpression.rsplit(AllowedCharacters.RANGE.value)
+            return f"between day {arguments[0]} and {arguments[1]} of the month"
+        return "ERROR"
+
+    @staticmethod
     def __is_star_expression(subexpression: str) -> bool:
         return AllowedCharacters.STAR.value == subexpression
+
+    @staticmethod
+    def __is_question_mark_expression(subexpression: str) -> bool:
+        return AllowedCharacters.QUESTION_MARK.value == subexpression
+
+    @staticmethod
+    def __is_last_day_expression(subexpression: str) -> bool:
+        return AllowedCharacters.LAST_DAY.value == subexpression
 
     @staticmethod
     def __is_slashed_star_expression(subexpression: str) -> bool:
@@ -82,6 +127,14 @@ class Translator:
     @staticmethod
     def __is_list_expression(subexpression: str) -> bool:
         return AllowedCharacters.LIST.value in subexpression
+
+    @staticmethod
+    def __is_week_day_expression(subexpression: str) -> bool:
+        return AllowedCharacters.WEEK_DAY.value in subexpression
+
+    @staticmethod
+    def __is_last_week_day_expression(subexpression: str) -> bool:
+        return Translator.__is_week_day_expression(subexpression) and AllowedCharacters.LAST_DAY.value in subexpression
 
     @staticmethod
     def __is_range_expression(subexpression: str) -> bool:
