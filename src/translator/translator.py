@@ -153,9 +153,9 @@ class Translator:
                 return f"on the last {Translator.__get_full_description(day_of_week[0], DAY_OF_WEEK_MAPPER)} of the " \
                        f"month"
             return "only on saturday"
-        subexpression = subexpression.lower()
-        if Translator.__is_star_expression(subexpression):
+        if Translator.__is_star_expression(subexpression) or Translator.__is_question_mark_expression(subexpression):
             return f"every day of the week"
+        subexpression = subexpression.lower()
         if Translator.__has_slash_in_expression(subexpression):
             arguments = subexpression.rsplit(AllowedCharacters.SLASH.value)
             slash_expr = f"every {Translator.__get_full_description(arguments[1], DAY_OF_WEEK_MAPPER, True)} days of " \

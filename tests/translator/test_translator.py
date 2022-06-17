@@ -255,6 +255,11 @@ class TestTranslator(unittest.TestCase):
         translated_expression = Translator.translate_day_of_week(day_of_week_subexpression)
         self.assertEquals(translated_expression, "every day of the week")
 
+    def test_should_translate_day_of_week_question_mark_subexpression(self):
+        day_of_week_subexpression = "?"
+        translated_expression = Translator.translate_day_of_week(day_of_week_subexpression)
+        self.assertEquals(translated_expression, "every day of the week")
+
     def test_should_translate_day_of_week_star_with_slash_subexpression(self):
         day_of_week_subexpression = "*/5"
         translated_expression = Translator.translate_day_of_week(day_of_week_subexpression)
