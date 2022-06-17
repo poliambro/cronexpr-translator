@@ -170,3 +170,81 @@ class TestTranslator(unittest.TestCase):
         last_week = "LW"
         translated_last_week_expression = Translator.translate_day_of_month(last_week, CronField.DAY_OF_MONTH)
         self.assertEquals(translated_last_week_expression, "on the last weekday of the month")
+
+    # MONTH
+    def test_should_translate_month_star_subexpression(self):
+        month_subexpression = "*"
+        translated_expression = Translator.translate_month(month_subexpression, CronField.MONTH)
+        self.assertEquals(translated_expression, "every month")
+
+    def test_should_translate_month_star_with_slash_subexpression(self):
+        month_subexpression = "*/5"
+        translated_expression = Translator.translate_month(month_subexpression, CronField.MONTH)
+        self.assertEquals(translated_expression, "every 5 months")
+
+    def test_should_translate_month_star_with_slash_subexpression_with_alternative_value(self):
+        month_subexpression = "*/oct"
+        translated_expression = Translator.translate_month(month_subexpression, CronField.MONTH)
+        self.assertEquals(translated_expression, "every 10 months")
+
+    def test_should_translate_month_slash_subexpression(self):
+        month_subexpression = "2/5"
+        translated_expression = Translator.translate_month(month_subexpression, CronField.MONTH)
+        self.assertEquals(translated_expression, "every 5 months, february through december")
+
+    def test_should_translate_month_slash_subexpression_with_alternative_value(self):
+        month_subexpression = "feb/may"
+        translated_expression = Translator.translate_month(month_subexpression, CronField.MONTH)
+        self.assertEquals(translated_expression, "every 5 months, february through december")
+
+    def test_should_translate_month_slash_subexpression_to_every_second_when_the_first_value_is_1(self):
+        month_subexpression = "1/7"
+        translated_expression = Translator.translate_month(month_subexpression, CronField.MONTH)
+        self.assertEquals(translated_expression, "every 7 months")
+
+    def test_should_translate_month_slash_subexpression_to_every_second_when_the_first_value_is_1_with_alternative_value(self):
+        month_subexpression = "1/jul"
+        translated_expression = Translator.translate_month(month_subexpression, CronField.MONTH)
+        self.assertEquals(translated_expression, "every 7 months")
+
+    def test_should_translate_month_range_subexpression(self):
+        month_subexpression = "5-10"
+        translated_expression = Translator.translate_month(month_subexpression, CronField.MONTH)
+        self.assertEquals(translated_expression, "may through october")
+
+    def test_should_translate_month_range_subexpression_with_alternative_value(self):
+        month_subexpression = "may-oct"
+        translated_expression = Translator.translate_month(month_subexpression, CronField.MONTH)
+        self.assertEquals(translated_expression, "may through october")
+
+    def test_should_translate_month_list_subexpression(self):
+        month_subexpression = "1,2,3,5"
+        translated_expression = Translator.translate_month(month_subexpression, CronField.MONTH)
+        self.assertEquals(translated_expression, "only in january, february, march, and may")
+
+    def test_should_translate_month_list_subexpression_with_alternative_value(self):
+        month_subexpression = "jan,feb,mar,may"
+        translated_expression = Translator.translate_month(month_subexpression, CronField.MONTH)
+        self.assertEquals(translated_expression, "only in january, february, march, and may")
+
+    def test_should_translate_month_list_with_range_within_subexpression(self):
+        month_subexpression = "1,2,3,5-7,8"
+        translated_expression = Translator.translate_month(month_subexpression, CronField.MONTH)
+        self.assertEquals(translated_expression, "only in january, february, march, may through july, and august")
+
+    def test_should_translate_month_list_with_range_within_subexpression_with_alternative_value(self):
+        month_subexpression = "jan,feb,mar,may-jul,aug"
+        translated_expression = Translator.translate_month(month_subexpression, CronField.MONTH)
+        self.assertEquals(translated_expression, "only in january, february, march, may through july, and august")
+
+    def test_should_translate_month_list_with_range_within_subexpression_when_a_range_value_is_the_last(self):
+        month_subexpression = "1,2,3,5-7,8-10"
+        translated_expression = Translator.translate_month(month_subexpression, CronField.MONTH)
+        self.assertEquals(translated_expression, "only in january, february, march, may through july, and august "
+                                                 "through october")
+
+    def test_should_translate_month_list_with_range_within_subexpr_when_range_value_is_the_last_with_alternative_value(self):
+        month_subexpression = "jan,feb,mar,may-jul,aug-oct"
+        translated_expression = Translator.translate_month(month_subexpression, CronField.MONTH)
+        self.assertEquals(translated_expression, "only in january, february, march, may through july, and august "
+                                                 "through october")

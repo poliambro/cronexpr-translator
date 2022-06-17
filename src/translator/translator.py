@@ -1,5 +1,9 @@
 from src.translator.enums import CronField, AllowedCharacters
 
+MONTHS_MAPPER = {1: ("jan", "january"), 2: ("feb", "february"), 3: ("mar", "march"), 4: ("apr", "april"),
+                 5: ("may", "may"), 6: ("jun", "june"), 7: ("jul", "july"), 8: ("aug", "august"),
+                 9: ("sep", "september"), 10: ("oct", "october"), 11: ("nov", "november"), 12: ("dec", "december")}
+
 
 class Translator:
 
@@ -104,6 +108,40 @@ class Translator:
         return "ERROR"
 
     @staticmethod
+    def translate_month(subexpression: str, field_type: CronField) -> str:
+        subexpression = subexpression.lower()
+        field_name = str(field_type.name).lower()
+        if Translator.__is_star_expression(subexpression):
+            return f"every {field_name}"
+        if Translator.__has_slash_in_expression(subexpression):
+            arguments = subexpression.rsplit(AllowedCharacters.SLASH.value)
+            slash_expr = f"every {Translator.__get_month_description(arguments[1], True)} {field_name}s"
+            if Translator.__is_slashed_star_expression(subexpression, False):
+                return slash_expr
+            return f"{slash_expr}, {Translator.__get_month_description(arguments[0])} through december"
+        if Translator.__is_list_expression(subexpression):
+            list_values = subexpression.rsplit(AllowedCharacters.LIST.value)
+            translation_msg = "only in "
+            for value in list_values:
+                element_desc = value
+                if Translator.__is_range_expression(element_desc):
+                    arguments = element_desc.rsplit(AllowedCharacters.RANGE.value)
+                    element_desc = f"{Translator.__get_month_description(arguments[0])} through " \
+                                   f"{Translator.__get_month_description(arguments[1])}"
+                else:
+                    element_desc = Translator.__get_month_description(element_desc)
+                if list_values[-1] == value:
+                    translation_msg += f"and {element_desc}"
+                    break
+                translation_msg += f"{element_desc}, "
+            return translation_msg
+        if Translator.__is_range_expression(subexpression):
+            arguments = subexpression.rsplit(AllowedCharacters.RANGE.value)
+            return f"{Translator.__get_month_description(arguments[0])} through " \
+                   f"{Translator.__get_month_description(arguments[1])}"
+        return "ERROR"
+
+    @staticmethod
     def __is_star_expression(subexpression: str) -> bool:
         return AllowedCharacters.STAR.value == subexpression
 
@@ -116,9 +154,11 @@ class Translator:
         return AllowedCharacters.LAST_DAY.value == subexpression
 
     @staticmethod
-    def __is_slashed_star_expression(subexpression: str) -> bool:
-        return f"{AllowedCharacters.STAR.value}{AllowedCharacters.SLASH.value}" in subexpression or \
-               f"0{AllowedCharacters.SLASH.value}" in subexpression
+    def __is_slashed_star_expression(subexpression: str, zero_based: bool = True) -> bool:
+        return_value = f"{AllowedCharacters.STAR.value}{AllowedCharacters.SLASH.value}" in subexpression
+        if zero_based:
+            return return_value or f"0{AllowedCharacters.SLASH.value}" in subexpression
+        return return_value or f"1{AllowedCharacters.SLASH.value}" in subexpression
 
     @staticmethod
     def __has_slash_in_expression(subexpression: str) -> bool:
@@ -158,3 +198,15 @@ class Translator:
         elif is_last and not hour_int_value > 12:
             return f"{hour_int_value}:59 {Translator.__get_hour_period(hour_24_format)}"
         return f"{hour_int_value}:00 {Translator.__get_hour_period(hour_24_format)}"
+
+    @staticmethod
+    def __get_month_description(value: str, numeric_value: bool = False) -> str:
+        if value.isnumeric() and numeric_value:
+            return value
+        if value.isalpha():
+            for key in MONTHS_MAPPER:
+                if value == MONTHS_MAPPER[key][0]:
+                    if numeric_value:
+                        return str(key)
+                    return MONTHS_MAPPER[key][1]
+        return MONTHS_MAPPER.get(int(value))[1]
