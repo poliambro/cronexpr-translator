@@ -5,6 +5,7 @@ from src.translator.enums import CronField
 
 class TestTranslator(unittest.TestCase):
 
+    # SECONDS AND MINUTES
     def test_should_translate_seconds_and_minutes_star_subexpression(self):
         sec_and_min_subexpression = "*"
         translated_expression = Translator.translate_seconds_and_minutes(sec_and_min_subexpression, CronField.SECOND)
@@ -60,3 +61,46 @@ class TestTranslator(unittest.TestCase):
         self.assertEquals(translated_expression, "at 0, 5, 10 through 15, and 20 through 25 seconds past the minute")
         translated_expression = Translator.translate_seconds_and_minutes(seconds_subexpression, CronField.MINUTE)
         self.assertEquals(translated_expression, "at 0, 5, 10 through 15, and 20 through 25 minutes past the hour")
+
+    # HOURS
+    def test_should_translate_hours_star_subexpression(self):
+        hours_subexpression = "*"
+        translated_expression = Translator.translate_hours(hours_subexpression, CronField.HOUR)
+        self.assertEquals(translated_expression, "every hour")
+
+    def test_should_translate_hours_star_with_slash_subexpression(self):
+        hours_subexpression = "*/5"
+        translated_expression = Translator.translate_hours(hours_subexpression, CronField.HOUR)
+        self.assertEquals(translated_expression, "every 5 hours")
+
+    def test_should_translate_hours_slash_subexpression(self):
+        hours_subexpression = "5/20"
+        translated_expression = Translator.translate_hours(hours_subexpression, CronField.HOUR)
+        self.assertEquals(translated_expression, "every 20 hours, starting at 5:00 AM")
+
+    def test_should_translate_hours_slash_subexpression_to_every_second_when_the_first_value_is_0(self):
+        hours_subexpression = "0/20"
+        translated_expression = Translator.translate_hours(hours_subexpression, CronField.HOUR)
+        self.assertEquals(translated_expression, "every 20 hours")
+
+    def test_should_translate_hours_range_subexpression(self):
+        hours_subexpression = "5-10"
+        translated_expression = Translator.translate_hours(hours_subexpression, CronField.HOUR)
+        self.assertEquals(translated_expression, "between 5:00 AM and 10:59 AM")
+
+    def test_should_translate_hours_list_subexpression(self):
+        hours_subexpression = "0,5,10,15,20"
+        translated_expression = Translator.translate_hours(hours_subexpression, CronField.HOUR)
+        self.assertEquals(translated_expression, "at 12:00 AM, 5:00 AM, 10:00 AM, 3:00 PM, and 8:00 PM")
+
+    def test_should_translate_hours_list_with_range_within_subexpression(self):
+        hours_subexpression = "0,5,10-15,20"
+        translated_expression = Translator.translate_hours(hours_subexpression, CronField.HOUR)
+        self.assertEquals(translated_expression, "at 12:00 AM, 5:00 AM, 10:00 AM through 3:59 PM, and 8:00 PM")
+
+    def test_should_translate_hours_list_with_range_within_subexpression_when_a_range_value_is_the_last(self):
+        hours_subexpression = "0,5,10-15,20-23"
+        translated_expression = Translator.translate_hours(hours_subexpression, CronField.HOUR)
+        self.assertEquals(translated_expression, "at 12:00 AM, 5:00 AM, 10:00 AM through 3:59 PM, and 8:00 PM "
+                                                 "through 11:59 PM")
+        
