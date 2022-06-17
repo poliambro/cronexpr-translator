@@ -4,6 +4,9 @@ MONTHS_MAPPER = {1: ("jan", "january"), 2: ("feb", "february"), 3: ("mar", "marc
                  5: ("may", "may"), 6: ("jun", "june"), 7: ("jul", "july"), 8: ("aug", "august"),
                  9: ("sep", "september"), 10: ("oct", "october"), 11: ("nov", "november"), 12: ("dec", "december")}
 
+DAY_OF_WEEK_MAPPER = {0: ("sun", "sunday"), 1: ("mon", "monday"), 2: ("tue", "tuesday"), 3: ("wed", "wednesday"),
+                      4: ("thu", "thursday"), 5: ("fri", "friday"), 6: ("sat", "saturday")}
+
 
 class Translator:
 
@@ -71,7 +74,7 @@ class Translator:
         return "ERROR"
 
     @staticmethod
-    def translate_day_of_month(subexpression: str, field_type: CronField) -> str:
+    def translate_day_of_month(subexpression: str) -> str:
         if Translator.__is_last_week_day_expression(subexpression):
             return "on the last weekday of the month"
         if Translator.__is_week_day_expression(subexpression):
@@ -115,10 +118,10 @@ class Translator:
             return f"every {field_name}"
         if Translator.__has_slash_in_expression(subexpression):
             arguments = subexpression.rsplit(AllowedCharacters.SLASH.value)
-            slash_expr = f"every {Translator.__get_month_description(arguments[1], True)} {field_name}s"
+            slash_expr = f"every {Translator.__get_full_description(arguments[1], MONTHS_MAPPER, True)} {field_name}s"
             if Translator.__is_slashed_star_expression(subexpression, False):
                 return slash_expr
-            return f"{slash_expr}, {Translator.__get_month_description(arguments[0])} through december"
+            return f"{slash_expr}, {Translator.__get_full_description(arguments[0], MONTHS_MAPPER)} through december"
         if Translator.__is_list_expression(subexpression):
             list_values = subexpression.rsplit(AllowedCharacters.LIST.value)
             translation_msg = "only in "
@@ -126,10 +129,10 @@ class Translator:
                 element_desc = value
                 if Translator.__is_range_expression(element_desc):
                     arguments = element_desc.rsplit(AllowedCharacters.RANGE.value)
-                    element_desc = f"{Translator.__get_month_description(arguments[0])} through " \
-                                   f"{Translator.__get_month_description(arguments[1])}"
+                    element_desc = f"{Translator.__get_full_description(arguments[0], MONTHS_MAPPER)} through " \
+                                   f"{Translator.__get_full_description(arguments[1], MONTHS_MAPPER)}"
                 else:
-                    element_desc = Translator.__get_month_description(element_desc)
+                    element_desc = Translator.__get_full_description(element_desc, MONTHS_MAPPER)
                 if list_values[-1] == value:
                     translation_msg += f"and {element_desc}"
                     break
@@ -137,8 +140,49 @@ class Translator:
             return translation_msg
         if Translator.__is_range_expression(subexpression):
             arguments = subexpression.rsplit(AllowedCharacters.RANGE.value)
-            return f"{Translator.__get_month_description(arguments[0])} through " \
-                   f"{Translator.__get_month_description(arguments[1])}"
+            return f"{Translator.__get_full_description(arguments[0], MONTHS_MAPPER)} through " \
+                   f"{Translator.__get_full_description(arguments[1], MONTHS_MAPPER)}"
+        return "ERROR"
+
+    @staticmethod
+    def translate_day_of_week(subexpression: str) -> str:
+        if Translator.__is_last_day_expression(subexpression):
+            return "only on saturday"
+        subexpression = subexpression.lower()
+        lower_last_day = str(AllowedCharacters.LAST_DAY.value).lower()
+        if lower_last_day in subexpression:
+            day_of_week = [day for day in subexpression.split(lower_last_day) if day]
+            return f"on the last {Translator.__get_full_description(day_of_week[0], DAY_OF_WEEK_MAPPER)} of the month"
+        if Translator.__is_star_expression(subexpression):
+            return f"every day of the week"
+        if Translator.__has_slash_in_expression(subexpression):
+            arguments = subexpression.rsplit(AllowedCharacters.SLASH.value)
+            slash_expr = f"every {Translator.__get_full_description(arguments[1], DAY_OF_WEEK_MAPPER, True)} days of " \
+                         f"the week"
+            if Translator.__is_slashed_star_expression(subexpression):
+                return slash_expr
+            return f"{slash_expr}, {Translator.__get_full_description(arguments[0], DAY_OF_WEEK_MAPPER)} through " \
+                   f"saturday"
+        if Translator.__is_list_expression(subexpression):
+            list_values = subexpression.rsplit(AllowedCharacters.LIST.value)
+            translation_msg = "only on "
+            for value in list_values:
+                element_desc = value
+                if Translator.__is_range_expression(element_desc):
+                    arguments = element_desc.rsplit(AllowedCharacters.RANGE.value)
+                    element_desc = f"{Translator.__get_full_description(arguments[0], DAY_OF_WEEK_MAPPER)} through " \
+                                   f"{Translator.__get_full_description(arguments[1], DAY_OF_WEEK_MAPPER)}"
+                else:
+                    element_desc = Translator.__get_full_description(element_desc, DAY_OF_WEEK_MAPPER)
+                if list_values[-1] == value:
+                    translation_msg += f"and {element_desc}"
+                    break
+                translation_msg += f"{element_desc}, "
+            return translation_msg
+        if Translator.__is_range_expression(subexpression):
+            arguments = subexpression.rsplit(AllowedCharacters.RANGE.value)
+            return f"{Translator.__get_full_description(arguments[0], DAY_OF_WEEK_MAPPER)} through " \
+                   f"{Translator.__get_full_description(arguments[1], DAY_OF_WEEK_MAPPER)}"
         return "ERROR"
 
     @staticmethod
@@ -200,13 +244,13 @@ class Translator:
         return f"{hour_int_value}:00 {Translator.__get_hour_period(hour_24_format)}"
 
     @staticmethod
-    def __get_month_description(value: str, numeric_value: bool = False) -> str:
+    def __get_full_description(value: str, mapper_dict: dict, numeric_value: bool = False) -> str:
         if value.isnumeric() and numeric_value:
             return value
         if value.isalpha():
-            for key in MONTHS_MAPPER:
-                if value == MONTHS_MAPPER[key][0]:
+            for key in mapper_dict:
+                if value == mapper_dict[key][0]:
                     if numeric_value:
                         return str(key)
-                    return MONTHS_MAPPER[key][1]
-        return MONTHS_MAPPER.get(int(value))[1]
+                    return mapper_dict[key][1]
+        return mapper_dict.get(int(value))[1]
