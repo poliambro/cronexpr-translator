@@ -146,13 +146,14 @@ class Translator:
 
     @staticmethod
     def translate_day_of_week(subexpression: str) -> str:
+        # TODO: Add question mark description
         if Translator.__is_last_day_expression(subexpression):
+            day_of_week = [day for day in subexpression.split(AllowedCharacters.LAST_DAY.value) if day]
+            if len(day_of_week) > 0:
+                return f"on the last {Translator.__get_full_description(day_of_week[0], DAY_OF_WEEK_MAPPER)} of the " \
+                       f"month"
             return "only on saturday"
         subexpression = subexpression.lower()
-        lower_last_day = str(AllowedCharacters.LAST_DAY.value).lower()
-        if lower_last_day in subexpression:
-            day_of_week = [day for day in subexpression.split(lower_last_day) if day]
-            return f"on the last {Translator.__get_full_description(day_of_week[0], DAY_OF_WEEK_MAPPER)} of the month"
         if Translator.__is_star_expression(subexpression):
             return f"every day of the week"
         if Translator.__has_slash_in_expression(subexpression):
@@ -186,6 +187,35 @@ class Translator:
         return "ERROR"
 
     @staticmethod
+    def translate_year(subexpression: str, field_type: CronField) -> str:
+        field_name = str(field_type.name).lower()
+        if Translator.__is_star_expression(subexpression):
+            return f"every {field_name}"
+        if Translator.__has_slash_in_expression(subexpression):
+            arguments = subexpression.rsplit(AllowedCharacters.SLASH.value)
+            slash_expr = f"every {arguments[1]} {field_name}s"
+            if Translator.__is_slashed_star_expression(subexpression):
+                return slash_expr
+            return f"{slash_expr}, {arguments[0]} through 2099"
+        if Translator.__is_list_expression(subexpression):
+            list_values = subexpression.rsplit(AllowedCharacters.LIST.value)
+            translation_msg = "only in "
+            for value in list_values:
+                element_desc = value
+                if Translator.__is_range_expression(element_desc):
+                    arguments = element_desc.rsplit(AllowedCharacters.RANGE.value)
+                    element_desc = f"{arguments[0]} through {arguments[1]}"
+                if list_values[-1] == value:
+                    translation_msg += f"and {element_desc}"
+                    break
+                translation_msg += f"{element_desc}, "
+            return translation_msg
+        if Translator.__is_range_expression(subexpression):
+            arguments = subexpression.rsplit(AllowedCharacters.RANGE.value)
+            return f"{arguments[0]} through {arguments[1]}"
+        return "ERROR"
+
+    @staticmethod
     def __is_star_expression(subexpression: str) -> bool:
         return AllowedCharacters.STAR.value == subexpression
 
@@ -195,14 +225,15 @@ class Translator:
 
     @staticmethod
     def __is_last_day_expression(subexpression: str) -> bool:
-        return AllowedCharacters.LAST_DAY.value == subexpression
+        return subexpression.startswith(AllowedCharacters.LAST_DAY.value) or \
+               subexpression.endswith(AllowedCharacters.LAST_DAY.value)
 
     @staticmethod
     def __is_slashed_star_expression(subexpression: str, zero_based: bool = True) -> bool:
-        return_value = f"{AllowedCharacters.STAR.value}{AllowedCharacters.SLASH.value}" in subexpression
+        return_value = subexpression.startswith(f"{AllowedCharacters.STAR.value}{AllowedCharacters.SLASH.value}")
         if zero_based:
-            return return_value or f"0{AllowedCharacters.SLASH.value}" in subexpression
-        return return_value or f"1{AllowedCharacters.SLASH.value}" in subexpression
+            return return_value or subexpression.startswith(f"0{AllowedCharacters.SLASH.value}")
+        return return_value or subexpression.startswith(f"1{AllowedCharacters.SLASH.value}")
 
     @staticmethod
     def __has_slash_in_expression(subexpression: str) -> bool:
@@ -214,11 +245,13 @@ class Translator:
 
     @staticmethod
     def __is_week_day_expression(subexpression: str) -> bool:
-        return AllowedCharacters.WEEK_DAY.value in subexpression
+        return subexpression.startswith(AllowedCharacters.WEEK_DAY.value) or \
+               subexpression.endswith(AllowedCharacters.WEEK_DAY.value)
 
     @staticmethod
     def __is_last_week_day_expression(subexpression: str) -> bool:
-        return Translator.__is_week_day_expression(subexpression) and AllowedCharacters.LAST_DAY.value in subexpression
+        return Translator.__is_week_day_expression(subexpression) and \
+               Translator.__is_last_day_expression(subexpression)
 
     @staticmethod
     def __is_range_expression(subexpression: str) -> bool:

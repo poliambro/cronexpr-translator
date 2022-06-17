@@ -341,3 +341,44 @@ class TestTranslator(unittest.TestCase):
         day_of_week_subexpression = "wedL"
         translated_expression = Translator.translate_day_of_week(day_of_week_subexpression)
         self.assertEquals(translated_expression, "on the last wednesday of the month")
+
+    # YEAR
+    def test_should_translate_year_star_subexpression(self):
+        year_subexpression = "*"
+        translated_expression = Translator.translate_year(year_subexpression, CronField.YEAR)
+        self.assertEquals(translated_expression, "every year")
+
+    def test_should_translate_year_star_with_slash_subexpression(self):
+        year_subexpression = "*/1985"
+        translated_expression = Translator.translate_year(year_subexpression, CronField.YEAR)
+        self.assertEquals(translated_expression, "every 1985 years")
+
+    def test_should_translate_year_slash_subexpression(self):
+        year_subexpression = "1990/5"
+        translated_expression = Translator.translate_year(year_subexpression, CronField.YEAR)
+        self.assertEquals(translated_expression, "every 5 years, 1990 through 2099")
+
+    def test_should_translate_year_slash_subexpression_to_every_year_when_the_first_value_is_0(self):
+        year_subexpression = "0/20"
+        translated_expression = Translator.translate_year(year_subexpression, CronField.YEAR)
+        self.assertEquals(translated_expression, "every 20 years")
+
+    def test_should_translate_year_range_subexpression(self):
+        year_subexpression = "2010-2020"
+        translated_expression = Translator.translate_year(year_subexpression, CronField.YEAR)
+        self.assertEquals(translated_expression, "2010 through 2020")
+
+    def test_should_translate_year_list_subexpression(self):
+        year_subexpression = "1970,1980,1990"
+        translated_expression = Translator.translate_year(year_subexpression, CronField.YEAR)
+        self.assertEquals(translated_expression, "only in 1970, 1980, and 1990")
+
+    def test_should_translate_year_list_with_range_within_subexpression(self):
+        year_subexpression = "1970,1980,1990-2000,2010"
+        translated_expression = Translator.translate_year(year_subexpression, CronField.YEAR)
+        self.assertEquals(translated_expression, "only in 1970, 1980, 1990 through 2000, and 2010")
+
+    def test_should_translate_year_list_with_range_within_subexpression_when_a_range_value_is_the_last(self):
+        year_subexpression = "1970,1980-1990,2000,2010-2020"
+        translated_expression = Translator.translate_year(year_subexpression, CronField.YEAR)
+        self.assertEquals(translated_expression, "only in 1970, 1980 through 1990, 2000, and 2010 through 2020")
