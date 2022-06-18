@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name='cronexpr-translator',
-    version='1.0.1',
+    version='1.1.0',
     license='MIT',
     author="poliambro",
     author_email='poliana.ambrosio.campos@gmail.com',
