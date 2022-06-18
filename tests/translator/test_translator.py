@@ -165,13 +165,13 @@ class TestTranslator(unittest.TestCase):
         nearest_day_10 = "W10"
         translated_near_5_expression = Translator.translate_day_of_month(Expression(nearest_day_5))
         translated_near_10_expression = Translator.translate_day_of_month(Expression(nearest_day_10))
-        self.assertEqual(translated_near_5_expression, "on the weekday nearest day 5 of the month")
-        self.assertEqual(translated_near_10_expression, "on the weekday nearest day 10 of the month")
+        self.assertEqual(translated_near_5_expression, "on the week day nearest day 5 of the month")
+        self.assertEqual(translated_near_10_expression, "on the week day nearest day 10 of the month")
 
     def test_should_translate_last_week_day_expression(self):
         last_week = "LW"
         translated_last_week_expression = Translator.translate_day_of_month(Expression(last_week))
-        self.assertEqual(translated_last_week_expression, "on the last weekday of the month")
+        self.assertEqual(translated_last_week_expression, "on the last week day of the month")
 
     # MONTH
     def test_should_translate_month_star_subexpression(self):

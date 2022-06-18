@@ -42,15 +42,13 @@ class Translator:
 
     @staticmethod
     def translate_day_of_month(expression: Expression) -> str:
-        if expression.is_last_week_day_expression():
-            return "on the last weekday of the month"
-        if expression.is_week_day_expression():
-            day_of_month = [day for day in expression.expression.split(AllowedCharacters.WEEK_DAY.value) if day]
-            if day_of_month[0] == "1":
-                return "on the first week day of the month"
-            return f"on the weekday nearest day {day_of_month[0]} of the month"
-        if expression.is_last_day_expression():
-            return "on the last day of the month"
+        week_day_description = Translator.__get_week_day_description(expression)
+        if week_day_description:
+            return week_day_description
+        last_day_description = Translator.__get_last_day_description(expression=expression,
+                                                                     default_last_day="on the last day of the month")
+        if last_day_description:
+            return last_day_description
         return Translator.__find_description(expression=expression,
                                              star_suffix="day",
                                              first_prefix_slash=" days",
@@ -77,12 +75,14 @@ class Translator:
 
     @staticmethod
     def translate_day_of_week(expression: Expression) -> str:
-        if expression.is_last_day_expression():
-            day_of_week = [day for day in expression.expression.split(AllowedCharacters.LAST_DAY.value) if day]
-            if len(day_of_week) > 0:
-                return f"on the last {Translator.__get_full_description(day_of_week[0], DAY_OF_WEEK_MAPPER)} of the " \
-                       f"month"
-            return "only on saturday"
+        last_day_description = Translator.__get_last_day_description(expression=expression,
+                                                                     format_function=Translator.__get_full_description,
+                                                                     last_day_prefix="on the last ",
+                                                                     last_day_suffix=" of the month",
+                                                                     mapper_dict=DAY_OF_WEEK_MAPPER,
+                                                                     default_last_day="only on saturday")
+        if last_day_description:
+            return last_day_description
         return Translator.__find_description(expression=expression,
                                              star_suffix="day of the week",
                                              format_function=Translator.__get_full_description,
@@ -99,6 +99,31 @@ class Translator:
                                              first_prefix_slash=f" {field_name}s",
                                              second_suffix_slash=" through 2099",
                                              list_prefix="only in ")
+
+    @staticmethod
+    def __get_week_day_description(expression: Expression) -> str:
+        if expression.is_week_day_expression():
+            day_of_month = [day for day in expression.expression.split(AllowedCharacters.WEEK_DAY.value) if day]
+            if len(day_of_month) > 0:
+                first = "first" if day_of_month[0] == "1" else ""
+                last = "last" if day_of_month[0] == AllowedCharacters.LAST_DAY.value else ""
+                if not first and not last:
+                    return f"on the week day nearest day {day_of_month[0]} of the month"
+                return f"on the {first}{last} week day of the month"
+
+    @staticmethod
+    def __get_last_day_description(expression: Expression, **kwargs) -> str:
+        if expression.is_last_day_expression():
+            days = [day for day in expression.expression.split(AllowedCharacters.LAST_DAY.value) if day]
+            if len(days) > 0:
+                format_function = kwargs.get("format_function", None)
+                last_day_prefix = kwargs.get("last_day_prefix", "")
+                last_day_suffix = kwargs.get("last_day_suffix", "")
+                if format_function:
+                    mapper_dict = kwargs.get("mapper_dict", None)
+                    return f"{last_day_prefix}{format_function(value=days[0], mapper_dict=mapper_dict)}{last_day_suffix}"
+                return f"{last_day_prefix}{days[0]}{last_day_suffix}"
+            return kwargs.get("default_last_day")
 
     @staticmethod
     def __get_hour_period(hours: str) -> str:
@@ -132,18 +157,6 @@ class Translator:
                         return str(key)
                     return mapper_dict[key][1]
         return mapper_dict.get(int(value))[1]
-
-    @staticmethod
-    def __find_description(expression: Expression, **kwargs) -> str:
-        star_description = Translator.__get_star_and_question_mark_description(expression, **kwargs)
-        slashed_description = Translator.__get_slashed_description(expression, **kwargs)
-        list_description = Translator.__get_list_description(expression, **kwargs)
-        range_description = Translator.__get_range_description(expression, **kwargs)
-        descriptions_list = [star_description, slashed_description, list_description, range_description]
-        non_empty_descriptions = [description for description in descriptions_list if description]
-        if len(non_empty_descriptions) != 1:
-            return "ERROR"
-        return non_empty_descriptions[0]
 
     @staticmethod
     def __get_star_and_question_mark_description(expression: Expression, **kwargs) -> str:
@@ -211,3 +224,15 @@ class Translator:
                 second_element = format_function(value=arguments[1], is_last=True, mapper_dict=mapper_dict)
                 return f"{range_prefix}{first_element} {arguments_connector} {second_element}{range_suffix}"
             return f"{range_prefix}{arguments[0]} {arguments_connector} {arguments[1]}{range_suffix}"
+
+    @staticmethod
+    def __find_description(expression: Expression, **kwargs) -> str:
+        star_description = Translator.__get_star_and_question_mark_description(expression, **kwargs)
+        slashed_description = Translator.__get_slashed_description(expression, **kwargs)
+        list_description = Translator.__get_list_description(expression, **kwargs)
+        range_description = Translator.__get_range_description(expression, **kwargs)
+        descriptions_list = [star_description, slashed_description, list_description, range_description]
+        non_empty_descriptions = [description for description in descriptions_list if description]
+        if len(non_empty_descriptions) != 1:
+            return "ERROR"
+        return non_empty_descriptions[0]
