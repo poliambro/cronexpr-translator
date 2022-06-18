@@ -42,9 +42,9 @@ class Translator:
         return Translator.__find_description(expression=expression,
                                              value_prefix=f"at {field_name} ",
                                              star_suffix=field_name,
-                                             first_prefix_slash=f" {field_name}s",
-                                             second_prefix_slash=f"starting at {field_name} ",
-                                             second_suffix_slash=past_time,
+                                             iterator_suffix=f" {field_name}s",
+                                             start_value_prefix=f"starting at {field_name} ",
+                                             start_value_suffix=past_time,
                                              list_prefix="at ",
                                              list_suffix=f" {field_name}s{past_time}",
                                              range_prefix=f"{field_name}s ",
@@ -58,8 +58,8 @@ class Translator:
                                              value_prefix=at_prefix,
                                              star_suffix=field_name,
                                              format_function=Translator.__get_am_pm_formatted_hour,
-                                             first_prefix_slash=f" {field_name}s",
-                                             second_prefix_slash=f"starting at ",
+                                             iterator_suffix=f" {field_name}s",
+                                             start_value_prefix=f"starting at ",
                                              apply_format_function_in_first_arg=False,
                                              list_prefix=at_prefix,
                                              range_prefix="between ",
@@ -77,9 +77,9 @@ class Translator:
                                              value_prefix=on_day_prefix,
                                              value_suffix=of_the_month_suffix,
                                              star_suffix=f"{field_name}",
-                                             first_prefix_slash=f" {field_name}s",
-                                             second_prefix_slash=f"starting {on_day_prefix}",
-                                             second_suffix_slash=of_the_month_suffix,
+                                             iterator_suffix=f" {field_name}s",
+                                             start_value_prefix=f"starting {on_day_prefix}",
+                                             start_value_suffix=of_the_month_suffix,
                                              zero_based=False,
                                              list_prefix=on_day_prefix,
                                              list_suffix=of_the_month_suffix,
@@ -98,8 +98,8 @@ class Translator:
                                              star_suffix=field_name,
                                              format_function=Translator.__get_full_description,
                                              mapper_dict=MONTHS_MAPPER,
-                                             first_prefix_slash=f" {field_name}s",
-                                             second_suffix_slash=" through december",
+                                             iterator_suffix=f" {field_name}s",
+                                             start_value_suffix=" through december",
                                              zero_based=False,
                                              list_prefix=only_in_prefix)
 
@@ -111,8 +111,8 @@ class Translator:
                                              star_suffix="day of the week",
                                              format_function=Translator.__get_full_description,
                                              mapper_dict=DAY_OF_WEEK_MAPPER,
-                                             first_prefix_slash=f" days of the week",
-                                             second_suffix_slash=" through saturday",
+                                             iterator_suffix=f" days of the week",
+                                             start_value_suffix=" through saturday",
                                              list_prefix=only_on_prefix,
                                              find_last_day=True,
                                              last_day_prefix="on the last ",
@@ -126,8 +126,8 @@ class Translator:
         return Translator.__find_description(expression=expression,
                                              value_prefix=only_in_prefix,
                                              star_suffix=field_name,
-                                             first_prefix_slash=f" {field_name}s",
-                                             second_suffix_slash=" through 2099",
+                                             iterator_suffix=f" {field_name}s",
+                                             start_value_suffix=" through 2099",
                                              list_prefix=only_in_prefix)
 
     @staticmethod
@@ -191,23 +191,23 @@ class Translator:
     @staticmethod
     def __get_slashed_description(expression: Expression, **kwargs) -> str:
         if expression.has_slash_in_expression():
-            first_prefix_slash = kwargs.get("first_prefix_slash", "")
+            iterator_suffix = kwargs.get("iterator_suffix", "")
             format_function = kwargs.get("format_function", None)
             mapper_dict = kwargs.get("mapper_dict", None)
             arguments = expression.expression.rsplit(AllowedCharacters.SLASH.value)
-            slash_expr = f"every {arguments[1]}{first_prefix_slash}"
+            slash_expr = f"every {arguments[1]}{iterator_suffix}"
             if format_function and kwargs.get("apply_format_function_in_first_arg", True):
                 slash_expr = f"every " \
                              f"{format_function(value=arguments[1], mapper_dict=mapper_dict, numeric_value=True)}" \
-                             f"{first_prefix_slash}"
+                             f"{iterator_suffix}"
             if expression.is_slashed_star_expression(kwargs.get("zero_based", True)):
                 return slash_expr
-            second_prefix_slash = kwargs.get("second_prefix_slash", "")
-            second_suffix_slash = kwargs.get("second_suffix_slash", "")
+            start_value_prefix = kwargs.get("start_value_prefix", "")
+            start_value_suffix = kwargs.get("start_value_suffix", "")
             if format_function:
-                return f"{slash_expr}, {second_prefix_slash}" \
-                       f"{format_function(value=arguments[0], mapper_dict=mapper_dict)}{second_suffix_slash}"
-            return f"{slash_expr}, {second_prefix_slash}{arguments[0]}{second_suffix_slash}"
+                return f"{slash_expr}, {start_value_prefix}" \
+                       f"{format_function(value=arguments[0], mapper_dict=mapper_dict)}{start_value_suffix}"
+            return f"{slash_expr}, {start_value_prefix}{arguments[0]}{start_value_suffix}"
 
     @staticmethod
     def __get_list_description(expression: Expression, **kwargs) -> str:
