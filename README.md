@@ -7,6 +7,13 @@ The python translator for cron expressions
 `cronexpr-translator` gets a cron expression in a string format and returns a string in the following format with the
 description of every field in the given cron expression.
 
+** The translator leverages `cronexpr-validator` to validate the given cron expressions.
+1. If an invalid cron expression is provided, the translator will return `CRON EXPRESSION IS NOT VALID` message,
+but will not raise an error.
+2. If one of the subexpressions is not translated by any reason, the translator will return 
+`COULD NOT TRANSLATE SUBEXPRESSION` in the subexpression description, and will not raise an error.
+3. In summary, any raised errors by the application are not expected, and must be reported as a bug.
+
 `second -> seconds description` \
 `minute -> minutes description` \
 `hour -> hours description` \
