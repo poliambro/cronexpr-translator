@@ -1,5 +1,3 @@
-from typing import Callable, Any
-
 from src.translator.enums import CronField, AllowedCharacters
 from src.translator.expression import Expression
 
@@ -45,10 +43,6 @@ class Translator:
         week_day_description = Translator.__get_week_day_description(expression)
         if week_day_description:
             return week_day_description
-        last_day_description = Translator.__get_last_day_description(expression=expression,
-                                                                     default_last_day="on the last day of the month")
-        if last_day_description:
-            return last_day_description
         return Translator.__find_description(expression=expression,
                                              star_suffix="day",
                                              first_prefix_slash=" days",
@@ -59,7 +53,9 @@ class Translator:
                                              list_suffix=" of the month",
                                              range_prefix="between day ",
                                              range_suffix=" of the month",
-                                             arguments_connector="and")
+                                             arguments_connector="and",
+                                             find_last_day=True,
+                                             default_last_day="on the last day of the month")
 
     @staticmethod
     def translate_month(expression: Expression, field_type: CronField) -> str:
@@ -75,21 +71,17 @@ class Translator:
 
     @staticmethod
     def translate_day_of_week(expression: Expression) -> str:
-        last_day_description = Translator.__get_last_day_description(expression=expression,
-                                                                     format_function=Translator.__get_full_description,
-                                                                     last_day_prefix="on the last ",
-                                                                     last_day_suffix=" of the month",
-                                                                     mapper_dict=DAY_OF_WEEK_MAPPER,
-                                                                     default_last_day="only on saturday")
-        if last_day_description:
-            return last_day_description
         return Translator.__find_description(expression=expression,
                                              star_suffix="day of the week",
                                              format_function=Translator.__get_full_description,
                                              mapper_dict=DAY_OF_WEEK_MAPPER,
                                              first_prefix_slash=f" days of the week",
                                              second_suffix_slash=" through saturday",
-                                             list_prefix="only on ")
+                                             list_prefix="only on ",
+                                             find_last_day=True,
+                                             last_day_prefix="on the last ",
+                                             last_day_suffix=" of the month",
+                                             default_last_day="only on saturday")
 
     @staticmethod
     def translate_year(expression: Expression, field_type: CronField) -> str:
@@ -112,38 +104,18 @@ class Translator:
                 return f"on the {first}{last} week day of the month"
 
     @staticmethod
-    def __get_last_day_description(expression: Expression, **kwargs) -> str:
-        if expression.is_last_day_expression():
-            days = [day for day in expression.expression.split(AllowedCharacters.LAST_DAY.value) if day]
-            if len(days) > 0:
-                format_function = kwargs.get("format_function", None)
-                last_day_prefix = kwargs.get("last_day_prefix", "")
-                last_day_suffix = kwargs.get("last_day_suffix", "")
-                if format_function:
-                    mapper_dict = kwargs.get("mapper_dict", None)
-                    return f"{last_day_prefix}{format_function(value=days[0], mapper_dict=mapper_dict)}{last_day_suffix}"
-                return f"{last_day_prefix}{days[0]}{last_day_suffix}"
-            return kwargs.get("default_last_day")
-
-    @staticmethod
     def __get_hour_period(hours: str) -> str:
-        if 0 <= int(hours) < 12:
-            return "AM"
-        return "PM"
+        return "AM" if 0 <= int(hours) < 12 else "PM"
 
     @staticmethod
     def __get_am_pm_formatted_hour(value: str, **kwargs) -> str:
-        is_last = kwargs.get("is_last", False)
+        am_or_pm = Translator.__get_hour_period(value)
         hour_int_value = int(value)
         if hour_int_value == 0:
             hour_int_value = 12
-        if hour_int_value > 12 and is_last:
-            return f"{str(hour_int_value - 12)}:59 {Translator.__get_hour_period(value)}"
-        elif hour_int_value > 12 and not is_last:
-            return f"{str(hour_int_value - 12)}:00 {Translator.__get_hour_period(value)}"
-        elif is_last and not hour_int_value > 12:
-            return f"{hour_int_value}:59 {Translator.__get_hour_period(value)}"
-        return f"{hour_int_value}:00 {Translator.__get_hour_period(value)}"
+        first_arg = str(hour_int_value - 12) if hour_int_value > 12 else str(hour_int_value)
+        is_last = kwargs.get("is_last", False)
+        return f"{first_arg}{':00' if not is_last else ':59'} {am_or_pm}"
 
     @staticmethod
     def __get_full_description(value: str, mapper_dict: dict, **kwargs) -> str:
@@ -159,6 +131,21 @@ class Translator:
         return mapper_dict.get(int(value))[1]
 
     @staticmethod
+    def __get_last_day_description(expression: Expression, **kwargs) -> str:
+        if expression.is_last_day_expression():
+            days = [day for day in expression.expression.split(AllowedCharacters.LAST_DAY.value) if day]
+            if len(days) > 0:
+                format_function = kwargs.get("format_function", None)
+                last_day_prefix = kwargs.get("last_day_prefix", "")
+                last_day_suffix = kwargs.get("last_day_suffix", "")
+                if format_function:
+                    mapper_dict = kwargs.get("mapper_dict", None)
+                    return f"{last_day_prefix}" \
+                           f"{format_function(value=days[0], mapper_dict=mapper_dict)}{last_day_suffix}"
+                return f"{last_day_prefix}{days[0]}{last_day_suffix}"
+            return kwargs.get("default_last_day")
+
+    @staticmethod
     def __get_star_and_question_mark_description(expression: Expression, **kwargs) -> str:
         if expression.is_star_expression() or expression.is_question_mark_expression():
             return f"every {kwargs.get('star_suffix', '')}"
@@ -167,8 +154,6 @@ class Translator:
     def __get_slashed_description(expression: Expression, **kwargs) -> str:
         if expression.has_slash_in_expression():
             first_prefix_slash = kwargs.get("first_prefix_slash", "")
-            second_prefix_slash = kwargs.get("second_prefix_slash", "")
-            second_suffix_slash = kwargs.get("second_suffix_slash", "")
             format_function = kwargs.get("format_function", None)
             mapper_dict = kwargs.get("mapper_dict", None)
             arguments = expression.expression.rsplit(AllowedCharacters.SLASH.value)
@@ -179,8 +164,11 @@ class Translator:
                              f"{first_prefix_slash}"
             if expression.is_slashed_star_expression(kwargs.get("zero_based", True)):
                 return slash_expr
+            second_prefix_slash = kwargs.get("second_prefix_slash", "")
+            second_suffix_slash = kwargs.get("second_suffix_slash", "")
             if format_function:
-                return f"{slash_expr}, {second_prefix_slash}{format_function(value=arguments[0], mapper_dict=mapper_dict)}{second_suffix_slash}"
+                return f"{slash_expr}, {second_prefix_slash}" \
+                       f"{format_function(value=arguments[0], mapper_dict=mapper_dict)}{second_suffix_slash}"
             return f"{slash_expr}, {second_prefix_slash}{arguments[0]}{second_suffix_slash}"
 
     @staticmethod
@@ -188,7 +176,6 @@ class Translator:
         if expression.is_list_expression():
             list_values = expression.expression.rsplit(AllowedCharacters.LIST.value)
             list_prefix = kwargs.get("list_prefix", "")
-            list_suffix = kwargs.get("list_suffix", "")
             format_function = kwargs.get("format_function", None)
             mapper_dict = kwargs.get("mapper_dict", None)
             translation_msg = list_prefix
@@ -203,8 +190,10 @@ class Translator:
                         element_desc.expression = f"{first_element} through {second_element}"
                 else:
                     if format_function:
-                        element_desc.expression = format_function(value=element_desc.expression, mapper_dict=mapper_dict)
+                        element_desc.expression = format_function(value=element_desc.expression,
+                                                                  mapper_dict=mapper_dict)
                 if list_values[-1] == value:
+                    list_suffix = kwargs.get("list_suffix", "")
                     translation_msg += f"and {element_desc.expression}{list_suffix}"
                     break
                 translation_msg += f"{element_desc.expression}, "
@@ -215,23 +204,26 @@ class Translator:
         if expression.is_range_expression():
             arguments = expression.expression.rsplit(AllowedCharacters.RANGE.value)
             format_function = kwargs.get("format_function", None)
-            range_prefix = kwargs.get("range_prefix", "")
-            range_suffix = kwargs.get("range_suffix", "")
-            arguments_connector = kwargs.get("arguments_connector", "through")
+            first_element = arguments[0]
+            second_element = arguments[1]
             if format_function:
                 mapper_dict = kwargs.get("mapper_dict", None)
                 first_element = format_function(value=arguments[0], mapper_dict=mapper_dict)
                 second_element = format_function(value=arguments[1], is_last=True, mapper_dict=mapper_dict)
-                return f"{range_prefix}{first_element} {arguments_connector} {second_element}{range_suffix}"
-            return f"{range_prefix}{arguments[0]} {arguments_connector} {arguments[1]}{range_suffix}"
+            return f"{kwargs.get('range_prefix', '')}{first_element} {kwargs.get('arguments_connector', 'through')} " \
+                   f"{second_element}{kwargs.get('range_suffix', '')}"
 
     @staticmethod
     def __find_description(expression: Expression, **kwargs) -> str:
+        last_day_description = None
+        if kwargs.get("find_last_day", False):
+            last_day_description = Translator.__get_last_day_description(expression, **kwargs)
         star_description = Translator.__get_star_and_question_mark_description(expression, **kwargs)
         slashed_description = Translator.__get_slashed_description(expression, **kwargs)
         list_description = Translator.__get_list_description(expression, **kwargs)
         range_description = Translator.__get_range_description(expression, **kwargs)
-        descriptions_list = [star_description, slashed_description, list_description, range_description]
+        descriptions_list = [last_day_description, star_description, slashed_description, list_description,
+                             range_description]
         non_empty_descriptions = [description for description in descriptions_list if description]
         if len(non_empty_descriptions) != 1:
             return "ERROR"
