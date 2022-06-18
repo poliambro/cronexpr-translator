@@ -17,6 +17,15 @@ class TestTranslator(unittest.TestCase):
                                                                          CronField.MINUTE)
         self.assertEqual(translated_expression, "every minute")
 
+    def test_should_translate_value_seconds_and_minutes_expression(self):
+        sec_and_min_expression = "0"
+        translated_expression = Translator.translate_seconds_and_minutes(Expression(sec_and_min_expression),
+                                                                         CronField.SECOND)
+        self.assertEqual(translated_expression, "at second 0")
+        translated_expression = Translator.translate_seconds_and_minutes(Expression(sec_and_min_expression),
+                                                                         CronField.MINUTE)
+        self.assertEqual(translated_expression, "at minute 0")
+
     def test_should_translate_seconds_and_minutes_star_with_slash_subexpression(self):
         seconds_subexpression = "*/5"
         translated_expression = Translator.translate_seconds_and_minutes(Expression(seconds_subexpression),
@@ -86,6 +95,11 @@ class TestTranslator(unittest.TestCase):
         translated_expression = Translator.translate_hours(Expression(hours_subexpression), CronField.HOUR)
         self.assertEqual(translated_expression, "every hour")
 
+    def test_should_translate_value_hours_expression(self):
+        hour_expression = "22"
+        translated_expression = Translator.translate_hours(Expression(hour_expression), CronField.HOUR)
+        self.assertEqual(translated_expression, "at 10:00 PM")
+
     def test_should_translate_hours_star_with_slash_subexpression(self):
         hours_subexpression = "*/5"
         translated_expression = Translator.translate_hours(Expression(hours_subexpression), CronField.HOUR)
@@ -130,6 +144,11 @@ class TestTranslator(unittest.TestCase):
         day_of_month_subexpression = "?"
         translated_expression = Translator.translate_day_of_month(Expression(day_of_month_subexpression))
         self.assertEqual(translated_expression, "every day")
+
+    def test_should_translate_value_day_of_month_expression(self):
+        day_of_month_expression = "10"
+        translated_expression = Translator.translate_day_of_month(Expression(day_of_month_expression))
+        self.assertEqual(translated_expression, "on day 10 of the month")
 
     def test_should_translate_day_of_month_star_with_slash_subexpression(self):
         day_of_month_subexpression = "*/5"
@@ -194,6 +213,16 @@ class TestTranslator(unittest.TestCase):
         month_subexpression = "*"
         translated_expression = Translator.translate_month(Expression(month_subexpression), CronField.MONTH)
         self.assertEqual(translated_expression, "every month")
+
+    def test_should_translate_value_month_expression(self):
+        month_expression = "10"
+        translated_expression = Translator.translate_month(Expression(month_expression), CronField.MONTH)
+        self.assertEqual(translated_expression, "only in october")
+
+    def test_should_translate_alternative_value_month_expression(self):
+        month_expression = "OCT"
+        translated_expression = Translator.translate_month(Expression(month_expression), CronField.MONTH)
+        self.assertEqual(translated_expression, "only in october")
 
     def test_should_translate_month_star_with_slash_subexpression(self):
         month_subexpression = "*/5"
@@ -277,6 +306,16 @@ class TestTranslator(unittest.TestCase):
         day_of_week_subexpression = "?"
         translated_expression = Translator.translate_day_of_week(Expression(day_of_week_subexpression))
         self.assertEqual(translated_expression, "every day of the week")
+
+    def test_should_translate_value_day_of_week_expression(self):
+        month_expression = "5"
+        translated_expression = Translator.translate_day_of_week(Expression(month_expression))
+        self.assertEqual(translated_expression, "only on friday")
+
+    def test_should_translate_alternative_value_day_of_week_expression(self):
+        month_expression = "FRI"
+        translated_expression = Translator.translate_day_of_week(Expression(month_expression))
+        self.assertEqual(translated_expression, "only on friday")
 
     def test_should_translate_day_of_week_star_with_slash_subexpression(self):
         day_of_week_subexpression = "*/5"
@@ -371,6 +410,11 @@ class TestTranslator(unittest.TestCase):
         translated_expression = Translator.translate_year(Expression(year_subexpression), CronField.YEAR)
         self.assertEqual(translated_expression, "every year")
 
+    def test_should_translate_value_year_expression(self):
+        month_expression = "1970"
+        translated_expression = Translator.translate_year(Expression(month_expression), CronField.YEAR)
+        self.assertEqual(translated_expression, "only in 1970")
+
     def test_should_translate_year_star_with_slash_subexpression(self):
         year_subexpression = "*/1985"
         translated_expression = Translator.translate_year(Expression(year_subexpression), CronField.YEAR)
@@ -405,3 +449,70 @@ class TestTranslator(unittest.TestCase):
         year_subexpression = "1970,1980-1990,2000,2010-2020"
         translated_expression = Translator.translate_year(Expression(year_subexpression), CronField.YEAR)
         self.assertEqual(translated_expression, "only in 1970, 1980 through 1990, 2000, and 2010 through 2020")
+
+    # FULL EXPRESSION
+    def test_should_translate_every_field_cron_expression(self):
+        six_cron_expression = "* * * * * *"
+        seven_cron_expression = "* * * * * * *"
+        translated_six_expression = Translator.translate_expression(six_cron_expression)
+        translated_seven_expression = Translator.translate_expression(seven_cron_expression)
+        expected_six_translation = "second -> every second\n" \
+                                   "minute -> every minute\n" \
+                                   "hour -> every hour\n" \
+                                   "day of month -> every day\n" \
+                                   "month -> every month\n" \
+                                   "day of week -> every day of the week\n" \
+                                   "year -> not informed"
+        expected_seven_translation = "second -> every second\n" \
+                                     "minute -> every minute\n" \
+                                     "hour -> every hour\n" \
+                                     "day of month -> every day\n" \
+                                     "month -> every month\n" \
+                                     "day of week -> every day of the week\n" \
+                                     "year -> every year"
+        self.assertEqual(expected_six_translation, translated_six_expression)
+        self.assertEqual(expected_seven_translation, translated_seven_expression)
+
+    def test_should_translate_every_day_at_noon_cron_expression(self):
+        six_cron_expression = "0 0 12 * * ?"
+        seven_cron_expression = "0 0 12 * * ? *"
+        translated_six_expression = Translator.translate_expression(six_cron_expression)
+        translated_seven_expression = Translator.translate_expression(seven_cron_expression)
+        expected_six_translation = "second -> at second 0\n" \
+                                   "minute -> at minute 0\n" \
+                                   "hour -> at 12:00 PM\n" \
+                                   "day of month -> every day\n" \
+                                   "month -> every month\n" \
+                                   "day of week -> every day of the week\n" \
+                                   "year -> not informed"
+        expected_seven_translation = "second -> at second 0\n" \
+                                     "minute -> at minute 0\n" \
+                                     "hour -> at 12:00 PM\n" \
+                                     "day of month -> every day\n" \
+                                     "month -> every month\n" \
+                                     "day of week -> every day of the week\n" \
+                                     "year -> every year"
+        self.assertEqual(expected_six_translation, translated_six_expression)
+        self.assertEqual(expected_seven_translation, translated_seven_expression)
+
+    def test_should_translate_complex_cron_expression(self):
+        six_cron_expression = "0 0/5 14,18,3-10,22 ? JAN,MAR,SEP MON-FRI"
+        seven_cron_expression = "0 0/5 14,18,3-10,22 ? JAN,MAR,SEP MON-FRI 2002-2010"
+        translated_six_expression = Translator.translate_expression(six_cron_expression)
+        translated_seven_expression = Translator.translate_expression(seven_cron_expression)
+        expected_six_translation = "second -> at second 0\n" \
+                                   "minute -> every 5 minutes\n" \
+                                   "hour -> at 2:00 PM, 6:00 PM, 3:00 AM through 10:59 AM, and 10:00 PM\n" \
+                                   "day of month -> every day\n" \
+                                   "month -> only in january, march, and september\n" \
+                                   "day of week -> monday through friday\n" \
+                                   "year -> not informed"
+        expected_seven_translation = "second -> at second 0\n" \
+                                     "minute -> every 5 minutes\n" \
+                                     "hour -> at 2:00 PM, 6:00 PM, 3:00 AM through 10:59 AM, and 10:00 PM\n" \
+                                     "day of month -> every day\n" \
+                                     "month -> only in january, march, and september\n" \
+                                     "day of week -> monday through friday\n" \
+                                     "year -> 2002 through 2010"
+        self.assertEqual(expected_six_translation, translated_six_expression)
+        self.assertEqual(expected_seven_translation, translated_seven_expression)

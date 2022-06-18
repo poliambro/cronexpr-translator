@@ -1,5 +1,6 @@
 from src.translator.enums import CronField, AllowedCharacters
 from src.translator.expression import Expression
+from validator.validator import Validator
 
 MONTHS_MAPPER = {1: ("jan", "january"), 2: ("feb", "february"), 3: ("mar", "march"), 4: ("apr", "april"),
                  5: ("may", "may"), 6: ("jun", "june"), 7: ("jul", "july"), 8: ("aug", "august"),
@@ -12,10 +13,34 @@ DAY_OF_WEEK_MAPPER = {0: ("sun", "sunday"), 1: ("mon", "monday"), 2: ("tue", "tu
 class Translator:
 
     @staticmethod
+    def translate_expression(expression: str) -> str:
+        if not Validator.validate(expression):
+            return "CRON EXPRESSION IS NOT VALID"
+        subexpressions = expression.rsplit(AllowedCharacters.CRON_DELIMITER.value)
+        second_description = Translator.translate_seconds_and_minutes(Expression(subexpressions[0]), CronField.SECOND)
+        minute_description = Translator.translate_seconds_and_minutes(Expression(subexpressions[1]), CronField.MINUTE)
+        hour_description = Translator.translate_hours(Expression(subexpressions[2]), CronField.HOUR)
+        day_of_month_description = Translator.translate_day_of_month(Expression(subexpressions[3]))
+        month_description = Translator.translate_month(Expression(subexpressions[4]), CronField.MONTH)
+        day_of_week_description = Translator.translate_day_of_week(Expression(subexpressions[5]))
+        year_description = None
+        if len(subexpressions) == 7:
+            year_description = Translator.translate_year(Expression(subexpressions[6]), CronField.YEAR)
+        return f"second -> {second_description}\n" \
+               f"minute -> {minute_description}\n" \
+               f"hour -> {hour_description}\n" \
+               f"day of month -> {day_of_month_description}\n" \
+               f"month -> {month_description}\n" \
+               f"day of week -> {day_of_week_description}\n" \
+               f"year -> {'not informed' if not year_description else year_description}"
+
+
+    @staticmethod
     def translate_seconds_and_minutes(expression: Expression, field_type: CronField) -> str:
         field_name = str(field_type.name).lower()
         past_time = f" past the {str(CronField(field_type.value + 1).name).lower()}"
         return Translator.__find_description(expression=expression,
+                                             value_prefix=f"at {field_name} ",
                                              star_suffix=field_name,
                                              first_prefix_slash=f" {field_name}s",
                                              second_prefix_slash=f"starting at {field_name} ",
@@ -28,13 +53,15 @@ class Translator:
     @staticmethod
     def translate_hours(expression: Expression, field_type: CronField) -> str:
         field_name = str(field_type.name).lower()
+        at_prefix = "at "
         return Translator.__find_description(expression=expression,
+                                             value_prefix=at_prefix,
                                              star_suffix=field_name,
                                              format_function=Translator.__get_am_pm_formatted_hour,
                                              first_prefix_slash=f" {field_name}s",
                                              second_prefix_slash=f"starting at ",
                                              apply_format_function_in_first_arg=False,
-                                             list_prefix="at ",
+                                             list_prefix=at_prefix,
                                              range_prefix="between ",
                                              arguments_connector="and")
 
@@ -43,41 +70,50 @@ class Translator:
         week_day_description = Translator.__get_week_day_description(expression)
         if week_day_description:
             return week_day_description
+        field_name = "day"
+        on_day_prefix = f"on {field_name} "
+        of_the_month_suffix = " of the month"
         return Translator.__find_description(expression=expression,
-                                             star_suffix="day",
-                                             first_prefix_slash=" days",
-                                             second_prefix_slash="starting on day ",
-                                             second_suffix_slash=" of the month",
+                                             value_prefix=on_day_prefix,
+                                             value_suffix=of_the_month_suffix,
+                                             star_suffix=f"{field_name}",
+                                             first_prefix_slash=f" {field_name}s",
+                                             second_prefix_slash=f"starting {on_day_prefix}",
+                                             second_suffix_slash=of_the_month_suffix,
                                              zero_based=False,
-                                             list_prefix="on day ",
-                                             list_suffix=" of the month",
-                                             range_prefix="between day ",
-                                             range_suffix=" of the month",
+                                             list_prefix=on_day_prefix,
+                                             list_suffix=of_the_month_suffix,
+                                             range_prefix=f"between {field_name} ",
+                                             range_suffix=of_the_month_suffix,
                                              arguments_connector="and",
                                              find_last_day=True,
-                                             default_last_day="on the last day of the month")
+                                             default_last_day=f"on the last {field_name}{of_the_month_suffix}")
 
     @staticmethod
     def translate_month(expression: Expression, field_type: CronField) -> str:
         field_name = str(field_type.name).lower()
+        only_in_prefix = "only in "
         return Translator.__find_description(expression=expression,
+                                             value_prefix=only_in_prefix,
                                              star_suffix=field_name,
                                              format_function=Translator.__get_full_description,
                                              mapper_dict=MONTHS_MAPPER,
                                              first_prefix_slash=f" {field_name}s",
                                              second_suffix_slash=" through december",
                                              zero_based=False,
-                                             list_prefix="only in ")
+                                             list_prefix=only_in_prefix)
 
     @staticmethod
     def translate_day_of_week(expression: Expression) -> str:
+        only_on_prefix = "only on "
         return Translator.__find_description(expression=expression,
+                                             value_prefix=only_on_prefix,
                                              star_suffix="day of the week",
                                              format_function=Translator.__get_full_description,
                                              mapper_dict=DAY_OF_WEEK_MAPPER,
                                              first_prefix_slash=f" days of the week",
                                              second_suffix_slash=" through saturday",
-                                             list_prefix="only on ",
+                                             list_prefix=only_on_prefix,
                                              find_last_day=True,
                                              last_day_prefix="on the last ",
                                              last_day_suffix=" of the month",
@@ -86,11 +122,13 @@ class Translator:
     @staticmethod
     def translate_year(expression: Expression, field_type: CronField) -> str:
         field_name = str(field_type.name).lower()
+        only_in_prefix = "only in "
         return Translator.__find_description(expression=expression,
+                                             value_prefix=only_in_prefix,
                                              star_suffix=field_name,
                                              first_prefix_slash=f" {field_name}s",
                                              second_suffix_slash=" through 2099",
-                                             list_prefix="only in ")
+                                             list_prefix=only_in_prefix)
 
     @staticmethod
     def __get_week_day_description(expression: Expression) -> str:
@@ -214,6 +252,15 @@ class Translator:
                    f"{second_element}{kwargs.get('range_suffix', '')}"
 
     @staticmethod
+    def __get_value_description(expression: Expression, **kwargs):
+        format_function = kwargs.get("format_function", None)
+        value = expression.expression
+        if format_function:
+            mapper_dict = kwargs.get("mapper_dict", None)
+            value = format_function(value=value, mapper_dict=mapper_dict)
+        return f"{kwargs.get('value_prefix', '')}{value}{kwargs.get('value_suffix', '')}"
+
+    @staticmethod
     def __find_description(expression: Expression, **kwargs) -> str:
         last_day_description = None
         if kwargs.get("find_last_day", False):
@@ -226,5 +273,8 @@ class Translator:
                              range_description]
         non_empty_descriptions = [description for description in descriptions_list if description]
         if len(non_empty_descriptions) != 1:
-            return "ERROR"
+            value_description = Translator.__get_value_description(expression, **kwargs)
+            if not value_description:
+                return "COULD NOT TRANSLATE"
+            return value_description
         return non_empty_descriptions[0]

@@ -19,3 +19,4 @@ class AllowedCharacters(Enum):
     QUESTION_MARK = "?"
     LAST_DAY = "L"
     WEEK_DAY = "W"
+    CRON_DELIMITER = " "
