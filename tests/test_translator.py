@@ -1,8 +1,8 @@
 import unittest
 
+from src.translator.enums import CronField
 from src.translator.expression import Expression
 from src.translator.translator import Translator
-from src.translator.enums import CronField
 
 
 class TestTranslator(unittest.TestCase):

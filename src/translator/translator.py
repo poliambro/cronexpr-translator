@@ -1,7 +1,8 @@
-from .enums import CronField, AllowedCharacters
-from .expression import Expression
-from .constants import *
 from validator.validator import Validator
+
+from .constants import *
+from .enums import AllowedCharacters, CronField
+from .expression import Expression
 
 
 class Translator:
